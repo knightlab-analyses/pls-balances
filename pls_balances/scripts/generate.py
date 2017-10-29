@@ -75,8 +75,10 @@ def noisify(table_file, metadata_file,
 @generate.command()
 @click.option('--max-alpha', default=2,
               help='Maximum effect size.')
-@click.option('--reps', default=30,
+@click.option('--group-size', default=30,
               help='Number of samples in each group.')
+@click.option('--reps', default=3,
+              help='Number of experiments to run for a given set of conditions.')
 @click.option('--intervals', default=30,
               help='Number of effect size benchmarks to test.')
 @click.option('--n-species', default=100,
@@ -102,8 +104,8 @@ def noisify(table_file, metadata_file,
               help='Template sample name.')
 @click.option('--output-dir',
               help='output directory')
-def compositional_effect_size(max_alpha, reps, intervals,
-                              n_species, n_diff,
+def compositional_effect_size(max_alpha, group_size, reps,
+                              intervals, n_species, n_diff,
                               n_contaminants, lam,
                               library_size,
                               asymmetry, fold_balance,
@@ -115,22 +117,26 @@ def compositional_effect_size(max_alpha, reps, intervals,
         template = templ.data(id=template_sample_name, axis='sample')
     else:
         template = None
-
+    choice = 'abcdefghijklmnopqrstuvwxyz'
     os.mkdir(output_dir)
-    gen = compositional_effect_size_generator(
-        max_alpha, reps, intervals, n_species, n_diff,
-        n_contaminants, lam, library_size=library_size,
-        asymmetry=asymmetry, fold_balance=fold_balance,
-        template=template
-    )
+    # iterate over replicate experiments
+    for r in range(reps):
 
-    for i, g in enumerate(gen):
-        table, groups, truth = g
-        output_table = "%s/table.%d.biom" % (output_dir, i)
-        output_groups = "%s/metadata.%d.txt" % (output_dir, i)
-        output_truth = "%s/truth.%d.csv" % (output_dir, i)
-        deposit(table, groups, truth,
-                output_table, output_groups, output_truth)
+        gen = compositional_effect_size_generator(
+            max_alpha, group_size, intervals, n_species, n_diff,
+            n_contaminants, lam, library_size=library_size,
+            asymmetry=asymmetry, fold_balance=fold_balance,
+            template=template
+        )
+
+        for i, g in enumerate(gen):
+            r_ = choice[r]
+            table, groups, truth = g
+            output_table = "%s/table.%d_%s.biom" % (output_dir, i, r_)
+            output_groups = "%s/metadata.%d_%s.txt" % (output_dir, i, r_)
+            output_truth = "%s/truth.%d_%s.csv" % (output_dir, i, r_)
+            deposit(table, groups, truth,
+                    output_table, output_groups, output_truth)
 
 @generate.command()
 @click.option('--effect-size', default=2,
@@ -189,8 +195,10 @@ def library_size_difference(effect_size, reps, intervals,
               help='Maximum number of changing species.')
 @click.option('--fold-change', default=2,
               help='Fold change of changing species.')
-@click.option('--reps', default=30,
+@click.option('--group-size', default=30,
               help='Number of samples in each group.')
+@click.option('--reps', default=3,
+              help='Number of experiments to run for a given set of conditions.')
 @click.option('--intervals', default=30,
               help='Number of effect size benchmarks to test.')
 @click.option('--n-species', default=100,
@@ -214,7 +222,8 @@ def library_size_difference(effect_size, reps, intervals,
               help='Template sample name.')
 @click.option('--output-dir',
               help='output directory')
-def compositional_variable_features(max_changing, fold_change, reps,
+def compositional_variable_features(max_changing, fold_change,
+                                    group_size, reps,
                                     intervals, n_species,
                                     library_size,
                                     asymmetry, fold_balance,
@@ -229,22 +238,29 @@ def compositional_variable_features(max_changing, fold_change, reps,
     else:
         template = None
 
-    gen = compositional_variable_features_generator(
-        max_changing=max_changing, fold_change=fold_change,
-        library_size=library_size,
-        reps=reps, intervals=intervals, n_species=n_species,
-        n_contaminants=n_contaminants, lam=lam, template=template,
-        asymmetry=asymmetry, fold_balance=fold_balance
-    )
-
     os.mkdir(output_dir)
-    for i, g in enumerate(gen):
-        table, groups, truth = g
-        output_table = "%s/table.%d.biom" % (output_dir, i)
-        output_groups = "%s/metadata.%d.txt" % (output_dir, i)
-        output_truth = "%s/truth.%d.csv" % (output_dir, i)
-        deposit(table, groups, truth,
-                output_table, output_groups, output_truth)
+
+    # no more than 26 replicates possible
+    choice = 'abcdefghijklmnopqrstuvwxyz'
+
+    # iterate over replicate experiments
+    for r in range(reps):
+        gen = compositional_variable_features_generator(
+            max_changing=max_changing, fold_change=fold_change,
+            library_size=library_size,
+            reps=group_size, intervals=intervals, n_species=n_species,
+            n_contaminants=n_contaminants, lam=lam, template=template,
+            asymmetry=asymmetry, fold_balance=fold_balance
+        )
+
+        for i, g in enumerate(gen):
+            r_ = choice[r]
+            table, groups, truth = g
+            output_table = "%s/table.%d_%s.biom" % (output_dir, i, r_)
+            output_groups = "%s/metadata.%d_%s.txt" % (output_dir, i, r_)
+            output_truth = "%s/truth.%d_%s.csv" % (output_dir, i, r_)
+            deposit(table, groups, truth,
+                    output_table, output_groups, output_truth)
 
 
 @generate.command()
